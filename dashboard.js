@@ -1,176 +1,156 @@
 import { auth, db } from './firebase-config.js';
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { collection, getDocs, query, where, doc, getDoc, updateDoc, increment, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-const testsContainer = document.getElementById('testsContainer');
-const statsGrid = document.getElementById('statsGrid');
-const sharedTestsContainer = document.getElementById('sharedTestsContainer');
+const fileInput = document.getElementById('fileInput');
+const uploadBtn = document.getElementById('uploadBtn');
+const titleInput = document.getElementById('testTitle');
+const subjectSelect = document.getElementById('subjectSelect');
+const customSubjectInput = document.getElementById('customSubjectInput');
+const visibilitySelect = document.getElementById('visibilitySelect');
+const statusMsg = document.getElementById('statusMsg');
+const adminLink = document.getElementById('adminLink');
+
 let currentUser = null;
+let parsedQuestions = [];
 
-// ==========================================
-// 1. AUTH VA TASHRIF HISOBI (VISIT COUNTER)
-// ==========================================
+// 1. Foydalanuvchi va Adminlikni tekshirish
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUser = user;
-        
-        // Tashrifni hisoblash (Faqat bir marta dashboardga kirganda)
-        if (!sessionStorage.getItem('visited_today')) {
-            await updateDoc(doc(db, "users", user.uid), {
-                visitCount: increment(1)
-            });
-            sessionStorage.setItem('visited_today', 'true');
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists() && userDoc.data().role === 'admin') {
+            if (adminLink) adminLink.style.display = 'block';
         }
-
-        loadDashboardData();
     } else {
         window.location.replace("index.html");
     }
 });
 
-// ==========================================
-// 2. MA'LUMOTLARNI YUKLASH VA KESHDA SAQLASH
-// ==========================================
-async function loadDashboardData() {
-    const CACHE_KEY = `full_dashboard_cache_${currentUser.uid}`;
-    
-    // a) Keshdan yuklash
-    const cached = localStorage.getItem(CACHE_KEY);
-    if (cached) renderDashboard(JSON.parse(cached));
+// 2. Fan tanlash mantiqi (Boshqa tanlansa inputni ochish)
+subjectSelect.addEventListener('change', () => {
+    if (subjectSelect.value === 'other') {
+        customSubjectInput.style.display = 'block';
+        customSubjectInput.focus();
+    } else {
+        customSubjectInput.style.display = 'none';
+    }
+});
 
-    // b) Orqa fonda Firebase'dan yangilash
+// 3. Faylni o'qish va tahlil qilish
+fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const ext = file.name.split('.').pop().toLowerCase();
+    statusMsg.style.display = 'block';
+    statusMsg.style.color = "var(--btn-primary)";
+    statusMsg.innerText = "Fayl o'qilmoqda... ⏳";
+
+    let rawText = "";
+
     try {
-        // 1. Foydalanuvchi profili (Stats uchun)
-        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-        const userData = userDoc.data();
-
-        // 2. Hamma ommaviy testlar
-        const testsQuery = query(collection(db, "tests"), where("visibility", "==", "public"));
-        const testsSnap = await getDocs(testsQuery);
-        const allTests = testsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        // 3. Foydalanuvchi yechgan testlari (Shaxsiy hisob uchun)
-        const resultsQuery = query(collection(db, "results"), where("userId", "==", currentUser.uid));
-        const resultsSnap = await getDocs(resultsQuery);
-        const myResults = resultsSnap.docs.map(d => d.data());
-
-        // 4. Shaxsiy ulashilgan testlar (Agar foydalanuvchida sharedTests massivi bo'lsa)
-        let sharedTests = [];
-        if (userData.sharedTests && userData.sharedTests.length > 0) {
-            // Shaxsiy testlarni ID bo'yicha tortib olish
-            for (let tId of userData.sharedTests) {
-                const tDoc = await getDoc(doc(db, "tests", tId));
-                if (tDoc.exists()) sharedTests.push({ id: tDoc.id, ...tDoc.data() });
-            }
+        if (ext === 'txt') rawText = await readTxt(file);
+        else if (ext === 'pdf') rawText = await readPdf(file);
+        else if (ext === 'docx') rawText = await readDocx(file);
+        
+        parsedQuestions = parseContent(rawText);
+        
+        if (parsedQuestions.length > 0) {
+            statusMsg.innerText = `${parsedQuestions.length} ta savol tayyor! ✅`;
+            statusMsg.style.color = "#2ecc71";
+        } else {
+            statusMsg.innerText = "Savollar topilmadi! Formatni tekshiring. ❌";
+            statusMsg.style.color = "#e74c3c";
         }
+    } catch (err) {
+        statusMsg.innerText = "Faylni o'qishda xatolik!";
+    }
+});
 
-        const dashboardData = {
-            user: userData,
-            tests: allTests,
-            myResults: myResults,
-            sharedTests: sharedTests
-        };
-
-        // Keshni yangilash
-        localStorage.setItem(CACHE_KEY, JSON.stringify(dashboardData));
-        renderDashboard(dashboardData);
-
-    } catch (error) { console.error("Dashboard sync error:", error); }
+// --- O'qish yordamchilari ---
+function readTxt(file) {
+    return new Promise(res => {
+        const reader = new FileReader();
+        reader.onload = e => res(e.target.result);
+        reader.readAsText(file);
+    });
 }
 
-// ==========================================
-// 3. EKRANGA CHIZISH (RENDER)
-// ==========================================
-function renderDashboard(data) {
-    // A) STATISTIKA
-    const totalSolved = data.myResults.length;
-    const avgScore = totalSolved > 0 
-        ? Math.round(data.myResults.reduce((acc, curr) => acc + curr.percentage, 0) / totalSolved) 
-        : 0;
+async function readPdf(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let text = "";
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(s => s.str).join(" ") + "\n";
+    }
+    return text;
+}
 
-    statsGrid.innerHTML = `
-        <div class="stat-card"><h3>${data.user.visitCount || 0}</h3><p>Tashriflar</p></div>
-        <div class="stat-card"><h3>${totalSolved}</h3><p>Yechilgan</p></div>
-        <div class="stat-card"><h3>${avgScore}%</h3><p>Umumiy foiz</p></div>
-    `;
+async function readDocx(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const res = await mammoth.extractRawText({ arrayBuffer });
+    return res.value;
+}
 
-    // B) FANLAR BO'YICHA GURUHLASH
-    const subjectGroups = {};
-    data.tests.forEach(test => {
-        const sub = test.subject || "Boshqa fanlar";
-        if (!subjectGroups[sub]) subjectGroups[sub] = [];
-        subjectGroups[sub].push(test);
-    });
+// 4. Sening Parsing Logikang (A, B, C variantlar uchun)
+function parseContent(data) {
+    const lines = data.split('\n').map(l => l.trim()).filter(l => l !== "");
+    let questionsArray = [];
+    let currentQ = null;
 
-    testsContainer.innerHTML = '<h2><i class="fas fa-book-open"></i> Ommaviy Testlar</h2>';
-    for (const [subject, tests] of Object.entries(subjectGroups)) {
-        const subHeader = document.createElement('div');
-        subHeader.className = 'date-header';
-        subHeader.innerHTML = `
-            <span>${subject}</span>
-            <span style="font-size:0.8rem;">${tests.length} ta test <i class="fas fa-chevron-down"></i></span>
-        `;
-        
-        const subItems = document.createElement('div');
-        subItems.className = 'date-items';
+    for (let line of lines) {
+        if (/^\d+[\.\)]/.test(line)) {
+            if (currentQ) questionsArray.push(currentQ);
+            currentQ = { question: line.replace(/^\d+[\.\)]\s*/, ''), options: [] };
+        } else if (/^[a-zA-Z][\.\)]/.test(line) && currentQ) {
+            let isCorrect = line.includes('*') || line.includes('+');
+            let text = line.replace(/^[a-zA-Z][\.\)]\s*/, '').replace(/[\*\+]/, '').trim();
+            currentQ.options.push({ text: text, isCorrect: isCorrect });
+        }
+    }
+    if (currentQ) questionsArray.push(currentQ);
+    return questionsArray;
+}
 
-        tests.forEach(test => {
-            const myCount = data.myResults.filter(r => r.testId === test.id).length;
-            const globalCount = test.solvedCount || 0;
+// 5. Bazaga yuklash
+uploadBtn.addEventListener('click', async () => {
+    const title = titleInput.value.trim();
+    const visibility = visibilitySelect.value;
+    let subject = (subjectSelect.value === 'other') ? customSubjectInput.value.trim() : subjectSelect.value;
 
-            const card = document.createElement('div');
-            card.className = 'glass-card test-item';
-            card.innerHTML = `
-                <div style="flex:1" onclick="startTest('${test.id}')">
-                    <h3 style="margin:0">${test.title}</h3>
-                    <p style="font-size:0.75rem; opacity:0.7;">Siz: ${myCount} marta | Jami: ${globalCount} marta</p>
-                </div>
-                <button onclick="showLeaderboard('${test.id}', '${test.title}')" class="btn-icon" title="Leaderboard">
-                    <i class="fas fa-trophy"></i>
-                </button>
-            `;
-            subItems.appendChild(card);
+    if (!title || !subject || parsedQuestions.length === 0) return alert("Barcha maydonlarni to'ldiring!");
+
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yuklanmoqda...';
+
+    try {
+        const testId = "test_" + Date.now();
+        await setDoc(doc(db, "tests", testId), {
+            id: testId,
+            authorId: currentUser.uid,
+            title: title,
+            subject: subject,
+            visibility: visibility,
+            questions: parsedQuestions,
+            solvedCount: 0,
+            createdAt: new Date()
         });
 
-        subHeader.onclick = () => subItems.classList.toggle('active');
-        testsContainer.appendChild(subHeader);
-        testsContainer.appendChild(subItems);
+        // Dashboard keshini tozalash
+        localStorage.removeItem('public_tests_cache');
+
+        if (visibility === 'private') alert(`Shaxsiy test kodi: ${testId}`);
+        else alert("Test ommaviy qilindi!");
+
+        window.location.replace("dashboard.html");
+    } catch (err) {
+        alert("Xatolik: " + err.message);
+        uploadBtn.disabled = false;
+        uploadBtn.innerText = "Testni Bazaga Saqlash";
     }
-
-    // V) SHAXSIY ULASHILGAN TESTLAR
-    renderSharedTests(data.sharedTests);
-}
-
-// ==========================================
-// 4. SHAXSIY TESTNI KOD/LINK ORQALI QO'SHISH
-// ==========================================
-window.addPrivateTest = async () => {
-    const code = prompt("Shaxsiy test kodini (ID) kiriting:");
-    if (!code) return;
-
-    try {
-        const testDoc = await getDoc(doc(db, "tests", code));
-        if (testDoc.exists()) {
-            await updateDoc(doc(db, "users", currentUser.uid), {
-                sharedTests: arrayUnion(code)
-            });
-            alert("Test muvaffaqiyatli qo'shildi!");
-            loadDashboardData();
-        } else {
-            alert("Bunday kodli test topilmadi!");
-        }
-    } catch (e) { alert("Xatolik!"); }
-};
-
-// Leaderboard ko'rsatish (Sizga modal kerak bo'ladi)
-window.showLeaderboard = async (testId, title) => {
-    const resultsQuery = query(
-        collection(db, "results"), 
-        where("testId", "==", testId),
-        orderBy("percentage", "desc"),
-        limit(10)
-    );
-    // Bu yerda modal ochib natijalarni chiqarasiz
-    alert(`${title} bo'yicha Liderlar ro'yxati (Tez orada...)`);
-};
-                                           
+});
