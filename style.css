@@ -144,6 +144,10 @@ input:focus {
     display: flex;
     flex-direction: column;
     padding: 30px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 999; /* Modallar (z-index: 1000) menyuni to'sa olishi uchun 999 qildik */
+}
 }
 
 .sidebar nav {
@@ -306,6 +310,7 @@ input:focus {
     color: var(--btn-primary);
     transform: translateY(-2px);
 }
+
 
 
 
