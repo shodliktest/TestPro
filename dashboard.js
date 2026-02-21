@@ -7,25 +7,33 @@ const userEmailDisplay = document.getElementById('userEmail');
 const adminLink = document.getElementById('adminLink');
 const testsContainer = document.getElementById('testsContainer');
 
-// Foydalanuvchini tekshirish
+// Foydalanuvchini tekshirish va ma'lumotlarini yuklash
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         userEmailDisplay.innerText = user.email;
         
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-            const userData = userDoc.data();
-            welcomeText.innerText = `Xush kelibsiz, ${userData.email.split('@')[0]}!`;
-            
-            if (userData.role === 'admin') {
-                adminLink.style.display = 'block';
+        try {
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                welcomeText.innerText = `Xush kelibsiz, ${userData.email.split('@')[0]}!`;
+                
+                if (userData.role === 'admin') {
+                    adminLink.style.display = 'block';
+                }
+            } else {
+                welcomeText.innerText = `Xush kelibsiz!`;
             }
+        } catch (error) {
+            console.error("Foydalanuvchi ma'lumotlarini olishda xato:", error);
+            welcomeText.innerText = `Xush kelibsiz!`;
         }
         
         // Foydalanuvchi tasdiqlangach, testlarni yuklaymiz
         loadTests();
 
     } else {
+        // Tizimga kirmagan bo'lsa, login sahifasiga qaytarish
         window.location.href = "index.html";
     }
 });
@@ -47,22 +55,24 @@ async function loadTests() {
         querySnapshot.forEach((doc) => {
             const test = doc.data();
             const testId = doc.id; // Testning maxsus ID si
+            const questionsCount = test.questions ? test.questions.length : 0;
             
             // Test kartochkasini yaratish
             const testCard = document.createElement('div');
             testCard.className = 'test-card glass-card';
-            testCard.style.padding = '20px';
+            testCard.style.padding = '25px';
             testCard.style.margin = '0';
             testCard.style.display = 'flex';
             testCard.style.flexDirection = 'column';
             testCard.style.justifyContent = 'space-between';
+            testCard.style.minHeight = '180px'; // Kartochkalar bir xil bo'yi bo'lishi uchun
 
             testCard.innerHTML = `
                 <div>
-                    <h3 style="color: var(--btn-primary); margin-bottom: 10px;">${test.title}</h3>
-                    <p style="font-size: 0.9rem; text-align: left; margin-bottom: 15px;">${test.description || "Ta'rif kiritilmagan"}</p>
-                    <div style="display: flex; gap: 10px; font-size: 0.8rem; opacity: 0.8; margin-bottom: 20px;">
-                        <span><i class="fas fa-question-circle"></i> ${test.questions.length} ta savol</span>
+                    <h3 style="color: var(--btn-primary); margin-bottom: 10px; font-size: 1.2rem;">${test.title}</h3>
+                    <p style="font-size: 0.9rem; text-align: left; margin-bottom: 15px; opacity: 0.8;">${test.description || "Ta'rif kiritilmagan"}</p>
+                    <div style="display: flex; gap: 15px; font-size: 0.85rem; opacity: 0.9; margin-bottom: 20px;">
+                        <span><i class="fas fa-question-circle"></i> ${questionsCount} ta savol</span>
                         <span><i class="fas ${test.visibility === 'public' ? 'fa-globe' : 'fa-lock'}"></i> ${test.visibility}</span>
                     </div>
                 </div>
@@ -74,24 +84,24 @@ async function loadTests() {
 
     } catch (error) {
         console.error("Testlarni yuklashda xato: ", error);
-        testsContainer.innerHTML = '<p style="color: red;">Xatolik yuz berdi. Internetni tekshiring.</p>';
+        testsContainer.innerHTML = '<p style="color: #ff6b6b;">Xatolik yuz berdi. Internetni yoki bazani tekshiring.</p>';
     }
 }
 
 // Global scope uchun startTest funksiyasini yozamiz
 window.startTest = function(testId) {
-    // Bosilganda test ishlash sahifasiga ID bilan o'tkazamiz
+    // Bosilganda test ishlash sahifasiga o'tkazamiz
     window.location.href = `test.html?id=${testId}`;
 };
 
-// Chiqish
+// Chiqish tugmasi
 document.getElementById('logoutBtn').addEventListener('click', () => {
     signOut(auth).then(() => {
         window.location.href = "index.html";
     });
 });
 
-// Dark Mode
+// Dark/Light Mode
 const themeToggle = document.getElementById('themeToggle');
 themeToggle.addEventListener('click', () => {
     const body = document.body;
@@ -99,4 +109,3 @@ themeToggle.addEventListener('click', () => {
     body.setAttribute('data-theme', isDark ? 'light' : 'dark');
     themeToggle.innerHTML = isDark ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
 });
-                             
