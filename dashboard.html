@@ -6,6 +6,11 @@
     <title>TestPro | Dashboard</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
 </head>
 <body class="dashboard-body">
 
@@ -27,10 +32,11 @@
 
     <main class="main-content">
         <header>
-            <h1>Xush kelibsiz, <span id="userEmail">...</span>!</h1>
+            <h1>Xush kelibsiz, <span id="userEmail">Foydalanuvchi</span>! 👋</h1>
         </header>
 
-        <section id="statsGrid" class="stats-grid"></section>
+        <section id="statsGrid" class="stats-grid">
+            </section>
 
         <section id="testsContainer">
             <p style="text-align:center; padding:50px;">Ma'lumotlar yuklanmoqda... ⏳</p>
@@ -47,16 +53,19 @@
                 <h2 id="modalTestTitle">Liderlar</h2>
                 <button onclick="window.closeLeaderboard()" class="close-btn">&times;</button>
             </div>
-            <div id="leaderboardLoading" style="display:none; text-align:center;">⏳...</div>
+            <div id="leaderboardLoading" style="display:none; text-align:center; padding:20px;">
+                <i class="fas fa-spinner fa-spin"></i> Yuklanmoqda...
+            </div>
             <table id="leaderboardTable" class="leaderboard-table" style="display:none;">
-                <thead><tr><th>#</th><th>Email</th><th>%</th></tr></thead>
+                <thead><tr><th>#</th><th>Foydalanuvchi</th><th>Natija</th></tr></thead>
                 <tbody id="leaderboardBody"></tbody>
             </table>
-            <div id="noResultsMsg" style="display:none; text-align:center;">Hali natija yo'q</div>
+            <div id="noResultsMsg" style="display:none; text-align:center; padding:20px;">Hali natija yo'q</div>
         </div>
     </div>
 
     <script type="module" src="dashboard.js"></script>
     <script src="dark.js"></script>
 </body>
-</html>
+    </html>
+
