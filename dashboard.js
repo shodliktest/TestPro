@@ -1,6 +1,6 @@
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { doc, getDoc, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { doc, getDoc, collection, getDocs, query, orderBy, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const welcomeText = document.getElementById('welcomeText');
 const userEmailDisplay = document.getElementById('userEmail');
@@ -29,8 +29,9 @@ onAuthStateChanged(auth, async (user) => {
             welcomeText.innerText = `Xush kelibsiz!`;
         }
         
-        // Foydalanuvchi tasdiqlangach, testlarni yuklaymiz
+        // Asosiy ma'lumotlarni yuklash
         loadTests();
+        loadUserStats(user.uid); // Foydalanuvchi statistikasini yuklaymiz
 
     } else {
         // Tizimga kirmagan bo'lsa, login sahifasiga qaytarish
@@ -38,14 +39,39 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
+// FOYDALANUVCHI STATISTIKASINI YUKLASH (YANGI QISM)
+async function loadUserStats(uid) {
+    try {
+        const q = query(collection(db, "results"), where("userId", "==", uid));
+        const querySnapshot = await getDocs(q);
+        
+        let attempts = querySnapshot.size;
+        let totalPercentage = 0;
+        
+        querySnapshot.forEach((doc) => {
+            totalPercentage += doc.data().percentage;
+        });
+        
+        let avgScore = attempts > 0 ? Math.round(totalPercentage / attempts) : 0;
+        
+        document.getElementById('attemptsStat').innerText = attempts;
+        document.getElementById('avgScoreStat').innerText = avgScore + '%';
+        
+    } catch (error) {
+        console.error("Statistikani yuklashda xato:", error);
+    }
+}
+
 // TESTLARNI BAZADAN YUKLASH FUNKSIYASI
 async function loadTests() {
     try {
         testsContainer.innerHTML = ''; // Oldin tozalab olamiz
         
-        // tests kolleksiyasidan vaqti bo'yicha saralab olish
         const q = query(collection(db, "tests"), orderBy("createdAt", "desc"));
         const querySnapshot = await getDocs(q);
+
+        // Barcha testlar sonini ekranga chiqarish (YANGI QISM)
+        document.getElementById('totalTestsStat').innerText = querySnapshot.size;
 
         if (querySnapshot.empty) {
             testsContainer.innerHTML = '<p>Hozircha testlar yo\'q. Birinchi bo\'lib test yarating!</p>';
@@ -54,7 +80,7 @@ async function loadTests() {
 
         querySnapshot.forEach((doc) => {
             const test = doc.data();
-            const testId = doc.id; // Testning maxsus ID si
+            const testId = doc.id;
             const questionsCount = test.questions ? test.questions.length : 0;
             
             // Test kartochkasini yaratish
@@ -65,7 +91,7 @@ async function loadTests() {
             testCard.style.display = 'flex';
             testCard.style.flexDirection = 'column';
             testCard.style.justifyContent = 'space-between';
-            testCard.style.minHeight = '180px'; // Kartochkalar bir xil bo'yi bo'lishi uchun
+            testCard.style.minHeight = '180px';
 
             testCard.innerHTML = `
                 <div>
@@ -90,7 +116,6 @@ async function loadTests() {
 
 // Global scope uchun startTest funksiyasini yozamiz
 window.startTest = function(testId) {
-    // Bosilganda test ishlash sahifasiga o'tkazamiz
     window.location.href = `test.html?id=${testId}`;
 };
 
