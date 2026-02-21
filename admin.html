@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TestPro | Admin Panel</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Admin jadvali uchun qo'shimcha dizayn */
+        .admin-table { width: 100%; border-collapse: collapse; margin-top: 15px; color: white; }
+        .admin-table th, .admin-table td { padding: 12px; text-align: left; border-bottom: 1px solid var(--glass-border); }
+        .admin-table th { color: var(--btn-primary); font-weight: 600; }
+        .badge { padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+        .badge-admin { background: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
+        .badge-user { background: rgba(52, 152, 219, 0.2); color: #3498db; border: 1px solid #3498db; }
+        
+        @media (max-width: 768px) {
+            .admin-table th, .admin-table td { font-size: 0.85rem; padding: 8px; }
+            .hide-mobile { display: none; } /* Telefonda ba'zi ustunlarni yashiramiz */
+        }
+    </style>
+</head>
+<body class="dashboard-body">
+
+    <aside class="sidebar">
+        <div class="logo">
+            <h2>TestPro <span style="font-size: 0.8rem; color: #e74c3c;">[ADMIN]</span></h2>
+        </div>
+        <nav>
+            <a href="dashboard.html"><i class="fas fa-home"></i> Asosiy</a>
+            <a href="create.html"><i class="fas fa-plus-circle"></i> Test Yaratish</a>
+            <a href="history.html"><i class="fas fa-history"></i> Natijalarim</a>
+            <a href="admin.html" class="active" id="adminLink"><i class="fas fa-user-shield"></i> Admin Panel</a>
+        </nav>
+        <div class="sidebar-footer">
+            <button id="themeToggle" class="btn-icon"><i class="fas fa-moon"></i></button>
+            <button id="logoutBtn" class="btn-icon" title="Tizimdan chiqish"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header style="margin-bottom: 30px;">
+            <h1>Boshqaruv Paneli</h1>
+            <p style="text-align: left; opacity: 0.8; color: #f1c40f;">Faqat administratorlar uchun ruxsat etilgan hudud</p>
+        </header>
+
+        <section class="stats-grid" style="margin-bottom: 40px;">
+            <div class="stat-card" style="border-color: #f1c40f;">
+                <i class="fas fa-users" style="color: #f1c40f;"></i>
+                <div>
+                    <h3 id="totalUsersStat">0</h3>
+                    <p>Foydalanuvchilar</p>
+                </div>
+            </div>
+            <div class="stat-card" style="border-color: #3498db;">
+                <i class="fas fa-layer-group" style="color: #3498db;"></i>
+                <div>
+                    <h3 id="totalPlatformTests">0</h3>
+                    <p>Platformadagi Testlar</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-card" style="max-width: 100%; margin-bottom: 30px; padding: 20px;">
+            <h2 style="font-size: 1.5rem; margin-bottom: 10px;">👤 Foydalanuvchilar</h2>
+            <div style="overflow-x: auto;">
+                <table class="admin-table" id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>ID (UID)</th>
+                            <th>Roli</th>
+                            <th class="hide-mobile">Sana</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersList">
+                        <tr><td colspan="4">Yuklanmoqda...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="glass-card" style="max-width: 100%; padding: 20px;">
+            <h2 style="font-size: 1.5rem; margin-bottom: 10px;">📚 Barcha Testlar (O'chirish imkoni bilan)</h2>
+            <div id="adminTestsContainer" style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+                <p>Testlar yuklanmoqda... ⏳</p>
+            </div>
+        </section>
+
+    </main>
+
+    <script type="module" src="admin.js"></script>
+</body>
+</html>
