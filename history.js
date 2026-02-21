@@ -95,3 +95,33 @@ themeToggle.addEventListener('click', () => {
     body.setAttribute('data-theme', isDark ? 'light' : 'dark');
     themeToggle.innerHTML = isDark ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
 });
+
+// ==========================================
+// TUN REJIMI (DARK MODE) SAQLASH VA ISHLATISH
+// ==========================================
+const themeToggle = document.getElementById('themeToggle');
+
+// 1. Sahifa yuklanishi bilan LocalStorage'ni tekshirish
+if (localStorage.getItem('theme') === 'dark') {
+    document.body.setAttribute('data-theme', 'dark');
+    if (themeToggle) themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+} else {
+    if (themeToggle) themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+}
+
+// 2. Tugma bosilganda rejimi o'zgartirish va xotiraga yozish
+if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        
+        if (isDark) {
+            document.body.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'light'); // Yorug' rejimni eslab qolish
+            themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+        } else {
+            document.body.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark'); // Tun rejimini eslab qolish
+            themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+        }
+    });
+}
