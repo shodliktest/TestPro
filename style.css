@@ -311,6 +311,46 @@ input:focus {
     transform: translateY(-2px);
 }
 
+/* =========================================
+   6. TARIX (AKKORDEON GURUHLARI)
+========================================= */
+.date-header {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    padding: 15px 20px;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-weight: 600;
+    transition: background 0.3s;
+}
+
+.date-header:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.date-items {
+    display: none; /* Boshlang'ich holatda yashirin */
+    margin-bottom: 25px;
+    padding-left: 15px;
+    border-left: 2px solid var(--btn-primary);
+    flex-direction: column;
+    gap: 15px;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.date-items.active {
+    display: flex; /* Bosilganda ko'rinadi */
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 
 
 
