@@ -5,98 +5,55 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TestPro | Test Yaratish</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
-
-    <script>
-        if (localStorage.getItem('theme') === 'dark') {
-            document.documentElement.setAttribute('data-theme', 'dark');
-        }
-    </script>
 </head>
-<body class="dashboard-body">
+<body class="dashboard-body" style="justify-content: center; align-items: center;">
 
-    <aside class="sidebar">
-        <div class="logo"><h2>TestPro</h2></div>
-        <nav>
+    <div class="glass-card" style="max-width: 500px;">
+        <h2 style="text-align: center; margin-bottom: 20px;">Yangi Test Yaratish</h2>
+                <nav>
             <a href="dashboard.html"><i class="fas fa-home"></i> Asosiy</a>
             <a href="create.html" class="active"><i class="fas fa-plus-circle"></i> Test Yaratish</a>
             <a href="history.html"><i class="fas fa-history"></i> Natijalarim</a>
-            <a href="admin.html" id="adminLink" style="display: none;"><i class="fas fa-user-shield"></i> Admin</a>
-        </nav>
-        <div class="sidebar-footer">
-            <button id="themeToggle" class="btn-icon"><i class="fas fa-moon"></i></button>
-            <button id="logoutBtn" class="btn-icon"><i class="fas fa-sign-out-alt"></i></button>
+            <a href="admin.html" id="adminLink" style="display: none;"><i class="fas fa-user-shield"></i> Admin Panel</a>
+                </nav>
+        
+        <div class="input-group">
+            <input type="text" id="testTitle" placeholder="Test nomi (masalan: Frontend Asoslari)" required>
         </div>
-    </aside>
+        
+        <div class="input-group">
+            <input type="text" id="testDesc" placeholder="Test haqida qisqacha ma'lumot">
+        </div>
 
-    <main class="main-content">
-        <header>
-            <h1>Yangi Test Yuklash</h1>
-            <p>PDF, Word (.docx) va TXT formatlari qo'llab-quvvatlanadi.</p>
-        </header>
+        <div class="input-group" style="display: flex; gap: 10px; color: white;">
+            <label><input type="radio" name="visibility" value="public" checked> Public (Ochiq)</label>
+            <label><input type="radio" name="visibility" value="private"> Private (Yopiq)</label>
+        </div>
 
-        <section class="glass-card" style="max-width: 650px; margin-top: 20px;">
-            <div class="input-group">
-                <label><i class="fas fa-heading"></i> Test nomi:</label>
-                <input type="text" id="testTitle" placeholder="Masalan: 1-blok ona tili">
+        <div class="input-group">
+            <label style="color: white; font-size: 0.9rem; margin-bottom: 5px; display: block;">TXT faylni yuklang:</label>
+            <input type="file" id="fileInput" accept=".txt" style="padding: 10px; background: rgba(255,255,255,0.2);">
+        </div>
+
+        <button id="uploadBtn" class="btn btn-primary">Testni Bazaga Saqlash</button>
+        <button onclick="window.location.href='dashboard.html'" class="btn btn-outline" style="margin-top: 10px;">Ortga qaytish</button>
+        
+        <p id="statusMsg" style="margin-top: 15px; color: #00f2fe; font-weight: bold; display: none;"></p>
+    </div>
+
+
+         <footer class="app-footer">
+            <p>&copy; 2026 TestPro. Barcha huquqlar himoyalangan.</p>
+            <p>Muallif: <strong style="color: var(--btn-primary);">SHodlik</strong> | Barcha Ustozlar uchun loyihasi</p>
+            <div class="footer-links">
+                <a href="https://t.me/Otavaliyev_M" target="_blank"><i class="fab fa-telegram"></i> Biz bilan bog'lanish</a>
+                <a href="mailto: Dasturchi.99@gmail.com"><i class="fas fa-envelope"></i> Email yozish</a>
             </div>
-
-            <div class="input-group">
-                <label><i class="fas fa-book"></i> Fan nomi:</label>
-                <select id="subjectSelect" class="styled-select" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.1); color: white; border: 1px solid var(--glass-border);">
-                    <option value="" disabled selected>Fanni tanlang...</option>
-                    <optgroup label="Tillar">
-                        <option value="Ona tili va adabiyot">Ona tili va adabiyot</option>
-                        <option value="Ingliz tili">Ingliz tili</option>
-                        <option value="Rus tili">Rus tili</option>
-                        <option value="Turk tili">Turk tili</option>
-                        <option value="Arab tili">Arab tili</option>
-                    </optgroup>
-                    <optgroup label="Aniq va tabiiy fanlar">
-                        <option value="Matematika">Matematika</option>
-                        <option value="Fizika">Fizika</option>
-                        <option value="Kimyo">Kimyo</option>
-                        <option value="Biologiya">Biologiya</option>
-                        <option value="Informatika">Informatika</option>
-                    </optgroup>
-                    <optgroup label="Ijtimoiy fanlar">
-                        <option value="Tarix">Tarix</option>
-                        <option value="Geografiya">Geografiya</option>
-                        <option value="Huquq">Huquq</option>
-                    </optgroup>
-                    <option value="other">+ Boshqa (Qo'lda kiritish)</option>
-                </select>
-                <input type="text" id="customSubjectInput" placeholder="Fan nomini yozing..." style="display: none; margin-top: 10px;">
-            </div>
-
-            <div class="input-group">
-                <label><i class="fas fa-eye"></i> Ko'rinish darajasi:</label>
-                <select id="visibilitySelect">
-                    <option value="public">Hamma uchun (Public)</option>
-                    <option value="private">Faqat kod orqali (Private)</option>
-                </select>
-            </div>
-
-            <div class="input-group">
-                <label><i class="fas fa-file-upload"></i> Faylni tanlang:</label>
-                <input type="file" id="fileInput" accept=".txt,.pdf,.docx">
-                <div id="statusMsg" style="margin-top: 10px; font-weight: bold; display: none;"></div>
-            </div>
-
-            <button id="uploadBtn" class="btn" style="width: 100%; margin-top: 20px;">
-                <i class="fas fa-cloud-upload-alt"></i> Testni Bazaga Saqlash
-            </button>
-        </section>
-
-        <footer class="app-footer">
-            <p>&copy; 2026 TestPro | Muallif: <strong>Shodlik</strong></p>
-        </footer>
-    </main>
-
-    <script type="module" src="create.js"></script>
+         </footer>
     <script src="dark.js"></script>
+    <script type="module" src="create.js"></script>
 </body>
 </html>
+
+
+

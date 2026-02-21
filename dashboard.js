@@ -1,142 +1,127 @@
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { collection, getDocs, query, where, doc, getDoc, updateDoc, increment, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { doc, getDoc, collection, getDocs, query, orderBy, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-// --- GLOBAL FUNKSIYALAR (HTMLdan chaqirish uchun) ---
-window.startTest = (id) => { window.location.href = `test.html?id=${id}`; };
-window.closeLeaderboard = () => { document.getElementById('leaderboardModal').style.display = 'none'; };
+const welcomeText = document.getElementById('welcomeText');
+const userEmailDisplay = document.getElementById('userEmail');
+const adminLink = document.getElementById('adminLink');
+const testsContainer = document.getElementById('testsContainer');
 
-window.showLeaderboard = async (testId, title) => {
-    const modal = document.getElementById('leaderboardModal');
-    modal.style.display = 'block';
-    document.getElementById('modalTestTitle').innerText = title;
-    const body = document.getElementById('leaderboardBody');
-    const loading = document.getElementById('leaderboardLoading');
-    const table = document.getElementById('leaderboardTable');
-    
-    body.innerHTML = '';
-    loading.style.display = 'block';
-    table.style.display = 'none';
-
-    try {
-        const q = query(collection(db, "results"), where("testId", "==", testId), orderBy("percentage", "desc"), limit(10));
-        const snap = await getDocs(q);
-        loading.style.display = 'none';
-        
-        if (snap.empty) {
-            document.getElementById('noResultsMsg').style.display = 'block';
-        } else {
-            table.style.display = 'table';
-            document.getElementById('noResultsMsg').style.display = 'none';
-            let i = 1;
-            snap.forEach(d => {
-                const res = d.data();
-                body.innerHTML += `<tr><td>${i++}</td><td>${res.userEmail.split('@')[0]}</td><td><strong>${res.percentage}%</strong></td></tr>`;
-            });
-        }
-    } catch (e) { 
-        loading.innerText = "Xato! Index yaratilmagan."; 
-    }
-};
-
-// --- AUTH VA YUKLASH ---
+// Foydalanuvchini tekshirish va ma'lumotlarini yuklash
 onAuthStateChanged(auth, async (user) => {
     if (user) {
-        document.getElementById('userEmail').innerText = user.email.split('@')[0];
+        userEmailDisplay.innerText = user.email;
         
-        // Tashrifni sanash (Statistika uchun)
-        if (!sessionStorage.getItem('v')) {
-            await updateDoc(doc(db, "users", user.uid), { visitCount: increment(1) }).catch(()=>{});
-            sessionStorage.setItem('v', '1');
+        try {
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                welcomeText.innerText = `Xush kelibsiz, ${userData.email.split('@')[0]}!`;
+                
+                if (userData.role === 'admin') {
+                    adminLink.style.display = 'block';
+                }
+            } else {
+                welcomeText.innerText = `Xush kelibsiz!`;
+            }
+        } catch (error) {
+            console.error("Foydalanuvchi ma'lumotlarini olishda xato:", error);
+            welcomeText.innerText = `Xush kelibsiz!`;
         }
+        
+        // Asosiy ma'lumotlarni yuklash
+        loadTests();
+        loadUserStats(user.uid); // Foydalanuvchi statistikasini yuklaymiz
 
-        // Admin panel tugmasini tekshirish
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists() && userDoc.data().role === 'admin') {
-            document.getElementById('adminLink').style.display = 'block';
-        }
-
-        loadDashboardData(user.uid);
     } else {
-        window.location.replace("index.html");
+        // Tizimga kirmagan bo'lsa, login sahifasiga qaytarish
+        window.location.href = "index.html";
     }
 });
 
-async function loadDashboardData(uid) {
+// FOYDALANUVCHI STATISTIKASINI YUKLASH (YANGI QISM)
+async function loadUserStats(uid) {
     try {
-        const testsSnap = await getDocs(query(collection(db, "tests"), where("visibility", "==", "public")));
-        const resultsSnap = await getDocs(query(collection(db, "results"), where("userId", "==", uid)));
-        const userDoc = await getDoc(doc(db, "users", uid));
-
-        renderUI({
-            user: userDoc.data() || {},
-            tests: testsSnap.docs.map(d => ({id: d.id, ...d.data()})),
-            results: resultsSnap.docs.map(d => d.data())
-        });
-    } catch (e) { console.error("Xatolik:", e); }
-}
-
-function renderUI(data) {
-    // 1. Katta Statistika
-    const solved = data.results.length;
-    const avg = solved > 0 ? Math.round(data.results.reduce((s, r) => s + r.percentage, 0) / solved) : 0;
-    document.getElementById('statsGrid').innerHTML = `
-        <div class="stat-card"><h3>${data.user.visitCount || 0}</h3><p>Tashrif</p></div>
-        <div class="stat-card"><h3>${solved}</h3><p>Yechildi</p></div>
-        <div class="stat-card"><h3>${avg}%</h3><p>Natija</p></div>
-    `;
-
-    // 2. Fanlar Bo'yicha Guruhlash
-    const groups = {};
-    data.tests.forEach(t => {
-        const s = t.subject || "Boshqa";
-        if (!groups[s]) groups[s] = [];
-        groups[s].push(t);
-    });
-
-    const container = document.getElementById('testsContainer');
-    container.innerHTML = '<h2 class="section-title"><i class="fas fa-book"></i> Mavjud Testlar</h2>';
-    
-    for (const [sub, tests] of Object.entries(groups)) {
-        const header = document.createElement('div');
-        header.className = 'date-header';
-        header.innerHTML = `<span>${sub}</span> <span>${tests.length} ta test <i class="fas fa-chevron-down"></i></span>`;
+        const q = query(collection(db, "results"), where("userId", "==", uid));
+        const querySnapshot = await getDocs(q);
         
-        const items = document.createElement('div');
-        items.className = 'date-items';
-
-        tests.forEach(test => {
-            const card = document.createElement('div');
-            card.className = 'glass-card test-item-swipe';
-            card.innerHTML = `
-                <div onclick="window.startTest('${test.id}')" style="flex:1;">
-                    <h4 style="margin:0;">${test.title}</h4>
-                </div>
-                <button class="btn-trophy" onclick="window.showLeaderboard('${test.id}', '${test.title}')">
-                    <i class="fas fa-trophy"></i>
-                </button>
-            `;
-
-            // SWIPE EFFEKTI
-            let startX = 0;
-            card.addEventListener('touchstart', e => startX = e.touches[0].clientX);
-            card.addEventListener('touchend', e => {
-                if (startX - e.changedTouches[0].clientX > 70) window.showLeaderboard(test.id, test.title);
-            });
-
-            items.appendChild(card);
+        let attempts = querySnapshot.size;
+        let totalPercentage = 0;
+        
+        querySnapshot.forEach((doc) => {
+            totalPercentage += doc.data().percentage;
         });
-
-        header.onclick = () => items.classList.toggle('active');
-        container.appendChild(header);
-        container.appendChild(items);
+        
+        let avgScore = attempts > 0 ? Math.round(totalPercentage / attempts) : 0;
+        
+        document.getElementById('attemptsStat').innerText = attempts;
+        document.getElementById('avgScoreStat').innerText = avgScore + '%';
+        
+    } catch (error) {
+        console.error("Statistikani yuklashda xato:", error);
     }
 }
 
-// Chiqish Tugmasi
+// TESTLARNI BAZADAN YUKLASH FUNKSIYASI
+async function loadTests() {
+    try {
+        testsContainer.innerHTML = ''; // Oldin tozalab olamiz
+        
+        const q = query(collection(db, "tests"), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+
+        // Barcha testlar sonini ekranga chiqarish (YANGI QISM)
+        document.getElementById('totalTestsStat').innerText = querySnapshot.size;
+
+        if (querySnapshot.empty) {
+            testsContainer.innerHTML = '<p>Hozircha testlar yo\'q. Birinchi bo\'lib test yarating!</p>';
+            return;
+        }
+
+        querySnapshot.forEach((doc) => {
+            const test = doc.data();
+            const testId = doc.id;
+            const questionsCount = test.questions ? test.questions.length : 0;
+            
+            // Test kartochkasini yaratish
+            const testCard = document.createElement('div');
+            testCard.className = 'test-card glass-card';
+            testCard.style.padding = '25px';
+            testCard.style.margin = '0';
+            testCard.style.display = 'flex';
+            testCard.style.flexDirection = 'column';
+            testCard.style.justifyContent = 'space-between';
+            testCard.style.minHeight = '180px';
+
+            testCard.innerHTML = `
+                <div>
+                    <h3 style="color: var(--btn-primary); margin-bottom: 10px; font-size: 1.2rem;">${test.title}</h3>
+                    <p style="font-size: 0.9rem; text-align: left; margin-bottom: 15px; opacity: 0.8;">${test.description || "Ta'rif kiritilmagan"}</p>
+                    <div style="display: flex; gap: 15px; font-size: 0.85rem; opacity: 0.9; margin-bottom: 20px;">
+                        <span><i class="fas fa-question-circle"></i> ${questionsCount} ta savol</span>
+                        <span><i class="fas ${test.visibility === 'public' ? 'fa-globe' : 'fa-lock'}"></i> ${test.visibility}</span>
+                    </div>
+                </div>
+                <button onclick="startTest('${testId}')" class="btn btn-primary" style="margin-top: auto;">Testni ishlash</button>
+            `;
+            
+            testsContainer.appendChild(testCard);
+        });
+
+    } catch (error) {
+        console.error("Testlarni yuklashda xato: ", error);
+        testsContainer.innerHTML = '<p style="color: #ff6b6b;">Xatolik yuz berdi. Internetni yoki bazani tekshiring.</p>';
+    }
+}
+
+// Global scope uchun startTest funksiyasini yozamiz
+window.startTest = function(testId) {
+    window.location.href = `test.html?id=${testId}`;
+};
+
+// Chiqish tugmasi
 document.getElementById('logoutBtn').addEventListener('click', () => {
-    if(confirm("Chiqasizmi?")) signOut(auth).then(() => {
-        localStorage.clear();
-        window.location.replace("index.html");
+    signOut(auth).then(() => {
+        window.location.href = "index.html";
     });
 });
