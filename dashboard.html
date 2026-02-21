@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TestPro | Asosiy Boshqaruv Paneli</title>
+    <title>TestPro | Dashboard</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script>
+        // Sahifa yuklanganda "miltillash"ni oldini olish
         if (localStorage.getItem('theme') === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
         }
@@ -15,58 +16,50 @@
 <body class="dashboard-body">
 
     <aside class="sidebar">
-        <div class="logo">
+        <div class="sidebar-header">
+            <div class="logo-icon"><i class="fas fa-graduation-cap"></i></div>
             <h2>TestPro</h2>
         </div>
         <nav>
-            <a href="dashboard.html" class="active"><i class="fas fa-home"></i> Asosiy</a>
-            <a href="create.html"><i class="fas fa-plus-circle"></i> Test Yaratish</a>
+            <a href="dashboard.html" class="active"><i class="fas fa-th-large"></i> Asosiy Panel</a>
+            <a href="create.html"><i class="fas fa-plus-square"></i> Test Yaratish</a>
             <a href="history.html"><i class="fas fa-history"></i> Natijalarim</a>
-            <a href="admin.html" id="adminLink" style="display: none;"><i class="fas fa-user-shield"></i> Admin Panel</a>
+            <a href="admin.html" id="adminLink" style="display: none;"><i class="fas fa-user-shield"></i> Admin</a>
         </nav>
         <div class="sidebar-footer">
-            <button id="themeToggle" class="btn-icon" title="Rejimni o'zgartirish"><i class="fas fa-moon"></i></button>
-            <button id="logoutBtn" class="btn-icon" title="Chiqish"><i class="fas fa-sign-out-alt"></i></button>
+            <button id="themeToggle" class="btn-icon" title="Tun/Kun"><i class="fas fa-moon"></i></button>
+            <button id="logoutBtn" class="btn-icon logout" title="Chiqish"><i class="fas fa-sign-out-alt"></i></button>
         </div>
     </aside>
 
     <main class="main-content">
-        <header>
-            <div class="user-info">
-                <h1>Xush kelibsiz, <span id="userEmail" style="color: var(--btn-primary);">Foydalanuvchi</span>!</h1>
-                <p id="greetingText">Bugun bilimingizni sinab ko'rish uchun ajoyib kun.</p>
+        <header class="main-header">
+            <div class="welcome-text">
+                <h1>Xush kelibsiz, <span id="userEmail" style="color: var(--btn-primary);">...</span>! 👋</h1>
+                <p>Bugungi natijalaringizni ko'zdan kechiring.</p>
+            </div>
+            <div class="header-actions">
+                <button onclick="addPrivateTest()" class="btn btn-primary-outline">
+                    <i class="fas fa-key"></i> Kod orqali qo'shish
+                </button>
             </div>
         </header>
 
         <section id="statsGrid" class="stats-grid">
-            </section>
-
-        <section class="action-bar" style="margin: 25px 0; display: flex; gap: 15px; flex-wrap: wrap;">
-            <button onclick="addPrivateTest()" class="btn btn-outline" style="width: auto;">
-                <i class="fas fa-link"></i> Kod orqali test qo'shish
-            </button>
+            <div class="stat-card loading"><h3>0</h3><p>Yuklanmoqda...</p></div>
+            <div class="stat-card loading"><h3>0</h3><p>Yuklanmoqda...</p></div>
+            <div class="stat-card loading"><h3>0</h3><p>Yuklanmoqda...</p></div>
         </section>
 
-        <section id="sharedTestsSection" style="display: none; margin-bottom: 40px;">
-            <h2 style="margin-bottom: 15px; font-size: 1.4rem;">
-                <i class="fas fa-share-alt" style="color: #3498db;"></i> Sizga ulashilgan testlar
-            </h2>
-            <div id="sharedTestsContainer" class="tests-container">
-                </div>
-        </section>
-
-        <section id="testsContainer">
-            <h2 style="margin-bottom: 20px;"><i class="fas fa-book-open"></i> Mavjud Testlar</h2>
-            <p style="text-align: center; opacity: 0.7; padding: 20px;">Ma'lumotlar yuklanmoqda... ⏳</p>
-        </section>
-
-        <footer class="app-footer">
-            <p>&copy; 2026 TestPro. Barcha huquqlar himoyalangan.</p>
-            <p>Muallif: <strong>Shodlik</strong> | Suxandon AI</p>
-            <div class="footer-links">
-                <a href="#"><i class="fab fa-telegram"></i> Bog'lanish</a>
-                <a href="#"><i class="fas fa-envelope"></i> Qo'llab-quvvatlash</a>
+        <section id="testsContainer" class="tests-section">
+            <h2 class="section-title"><i class="fas fa-layer-group"></i> Fanlar bo'yicha saralangan</h2>
+            <div class="loading-spinner" style="text-align: center; padding: 50px;">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
             </div>
+        </section>
+
+        <footer class="dashboard-footer">
+            <p>&copy; 2026 <strong>Suxandon AI</strong>. Barcha huquqlar himoyalangan.</p>
         </footer>
     </main>
 
@@ -74,30 +67,27 @@
         <div class="modal-content glass-card">
             <div class="modal-header">
                 <div>
-                    <h2 id="modalTestTitle" style="margin: 0; font-size: 1.3rem;">Liderlar Jadvali</h2>
-                    <p style="font-size: 0.8rem; opacity: 0.7; margin: 0;">Eng yuqori natija ko'rsatgan 10 talik</p>
+                    <h2 id="modalTestTitle" style="margin:0;">Liderlar</h2>
+                    <p style="font-size: 0.8rem; opacity: 0.7; margin:0;">Top 10 natija</p>
                 </div>
                 <button onclick="closeLeaderboard()" class="close-btn">&times;</button>
             </div>
             <div class="modal-body">
-                <div id="leaderboardLoading" style="text-align: center; padding: 30px; display: none;">
-                    <i class="fas fa-spinner fa-spin"></i> Yuklanmoqda...
+                <div id="leaderboardLoading" style="text-align:center; padding: 20px;">
+                    <i class="fas fa-circle-notch fa-spin"></i>
                 </div>
                 <table class="leaderboard-table" id="leaderboardTable" style="display: none;">
                     <thead>
                         <tr>
                             <th>O'rin</th>
                             <th>Foydalanuvchi</th>
-                            <th>Foiz</th>
-                            <th class="hide-mobile">Ball</th>
+                            <th>Natija</th>
                         </tr>
                     </thead>
-                    <tbody id="leaderboardBody">
-                        </tbody>
+                    <tbody id="leaderboardBody"></tbody>
                 </table>
-                <div id="noResultsMsg" style="display: none; text-align: center; padding: 30px; opacity: 0.7;">
-                    <i class="fas fa-info-circle" style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>
-                    Hali hech kim bu testni yechmagan. Birinchi bo'ling!
+                <div id="noResultsMsg" style="display: none; text-align: center; padding: 20px;">
+                    Hali natijalar yo'q.
                 </div>
             </div>
         </div>
@@ -105,6 +95,5 @@
 
     <script type="module" src="dashboard.js"></script>
     <script src="dark.js"></script>
-
 </body>
 </html>
