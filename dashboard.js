@@ -2,11 +2,10 @@ import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { collection, getDocs, query, where, doc, getDoc, updateDoc, increment, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-// --- GLOBAL FUNKSIYALAR ---
+// --- GLOBAL FUNKSIYALAR (HTMLdan chaqirish uchun) ---
 window.startTest = (id) => { window.location.href = `test.html?id=${id}`; };
 window.closeLeaderboard = () => { document.getElementById('leaderboardModal').style.display = 'none'; };
 
-// --- LEADERBOARD ---
 window.showLeaderboard = async (testId, title) => {
     const modal = document.getElementById('leaderboardModal');
     modal.style.display = 'block';
@@ -32,46 +31,53 @@ window.showLeaderboard = async (testId, title) => {
             let i = 1;
             snap.forEach(d => {
                 const res = d.data();
-                body.innerHTML += `<tr><td>${i++}</td><td>${res.userEmail.split('@')[0]}</td><td>${res.percentage}%</td></tr>`;
+                body.innerHTML += `<tr><td>${i++}</td><td>${res.userEmail.split('@')[0]}</td><td><strong>${res.percentage}%</strong></td></tr>`;
             });
         }
     } catch (e) { 
-        loading.innerText = "Xato! (Index yaratish kerak)"; 
-        console.error(e);
+        loading.innerText = "Xato! Index yaratilmagan."; 
     }
 };
 
-// --- ASOSIY LOGIKA ---
+// --- AUTH VA YUKLASH ---
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         document.getElementById('userEmail').innerText = user.email.split('@')[0];
-        // Tashrifni sanash
+        
+        // Tashrifni sanash (Statistika uchun)
         if (!sessionStorage.getItem('v')) {
             await updateDoc(doc(db, "users", user.uid), { visitCount: increment(1) }).catch(()=>{});
             sessionStorage.setItem('v', '1');
         }
-        loadData(user.uid);
+
+        // Admin panel tugmasini tekshirish
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists() && userDoc.data().role === 'admin') {
+            document.getElementById('adminLink').style.display = 'block';
+        }
+
+        loadDashboardData(user.uid);
     } else {
         window.location.replace("index.html");
     }
 });
 
-async function loadData(uid) {
+async function loadDashboardData(uid) {
     try {
-        const userDoc = await getDoc(doc(db, "users", uid));
         const testsSnap = await getDocs(query(collection(db, "tests"), where("visibility", "==", "public")));
         const resultsSnap = await getDocs(query(collection(db, "results"), where("userId", "==", uid)));
+        const userDoc = await getDoc(doc(db, "users", uid));
 
         renderUI({
             user: userDoc.data() || {},
             tests: testsSnap.docs.map(d => ({id: d.id, ...d.data()})),
             results: resultsSnap.docs.map(d => d.data())
         });
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Xatolik:", e); }
 }
 
 function renderUI(data) {
-    // Stats
+    // 1. Katta Statistika
     const solved = data.results.length;
     const avg = solved > 0 ? Math.round(data.results.reduce((s, r) => s + r.percentage, 0) / solved) : 0;
     document.getElementById('statsGrid').innerHTML = `
@@ -80,7 +86,7 @@ function renderUI(data) {
         <div class="stat-card"><h3>${avg}%</h3><p>Natija</p></div>
     `;
 
-    // Fanlar
+    // 2. Fanlar Bo'yicha Guruhlash
     const groups = {};
     data.tests.forEach(t => {
         const s = t.subject || "Boshqa";
@@ -89,29 +95,35 @@ function renderUI(data) {
     });
 
     const container = document.getElementById('testsContainer');
-    container.innerHTML = '<h2><i class="fas fa-book"></i> Mavjud Testlar</h2>';
+    container.innerHTML = '<h2 class="section-title"><i class="fas fa-book"></i> Mavjud Testlar</h2>';
     
     for (const [sub, tests] of Object.entries(groups)) {
         const header = document.createElement('div');
         header.className = 'date-header';
-        header.innerHTML = `<span>${sub}</span> <span>${tests.length} ta <i class="fas fa-chevron-down"></i></span>`;
+        header.innerHTML = `<span>${sub}</span> <span>${tests.length} ta test <i class="fas fa-chevron-down"></i></span>`;
         
         const items = document.createElement('div');
         items.className = 'date-items';
 
         tests.forEach(test => {
             const card = document.createElement('div');
-            card.className = 'glass-card test-item';
-            card.style.display = 'flex';
-            card.style.justifyContent = 'space-between';
+            card.className = 'glass-card test-item-swipe';
             card.innerHTML = `
-                <div onclick="window.startTest('${test.id}')" style="cursor:pointer; flex:1;">
+                <div onclick="window.startTest('${test.id}')" style="flex:1;">
                     <h4 style="margin:0;">${test.title}</h4>
                 </div>
                 <button class="btn-trophy" onclick="window.showLeaderboard('${test.id}', '${test.title}')">
                     <i class="fas fa-trophy"></i>
                 </button>
             `;
+
+            // SWIPE EFFEKTI
+            let startX = 0;
+            card.addEventListener('touchstart', e => startX = e.touches[0].clientX);
+            card.addEventListener('touchend', e => {
+                if (startX - e.changedTouches[0].clientX > 70) window.showLeaderboard(test.id, test.title);
+            });
+
             items.appendChild(card);
         });
 
@@ -121,7 +133,10 @@ function renderUI(data) {
     }
 }
 
-// Chiqish tugmasi
+// Chiqish Tugmasi
 document.getElementById('logoutBtn').addEventListener('click', () => {
-    if(confirm("Chiqasizmi?")) signOut(auth).then(() => window.location.replace("index.html"));
+    if(confirm("Chiqasizmi?")) signOut(auth).then(() => {
+        localStorage.clear();
+        window.location.replace("index.html");
+    });
 });
