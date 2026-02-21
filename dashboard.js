@@ -1,127 +1,176 @@
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { doc, getDoc, collection, getDocs, query, orderBy, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, query, where, doc, getDoc, updateDoc, increment, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-const welcomeText = document.getElementById('welcomeText');
-const userEmailDisplay = document.getElementById('userEmail');
-const adminLink = document.getElementById('adminLink');
 const testsContainer = document.getElementById('testsContainer');
+const statsGrid = document.getElementById('statsGrid');
+const sharedTestsContainer = document.getElementById('sharedTestsContainer');
+let currentUser = null;
 
-// Foydalanuvchini tekshirish va ma'lumotlarini yuklash
+// ==========================================
+// 1. AUTH VA TASHRIF HISOBI (VISIT COUNTER)
+// ==========================================
 onAuthStateChanged(auth, async (user) => {
     if (user) {
-        userEmailDisplay.innerText = user.email;
+        currentUser = user;
         
-        try {
-            const userDoc = await getDoc(doc(db, "users", user.uid));
-            if (userDoc.exists()) {
-                const userData = userDoc.data();
-                welcomeText.innerText = `Xush kelibsiz, ${userData.email.split('@')[0]}!`;
-                
-                if (userData.role === 'admin') {
-                    adminLink.style.display = 'block';
-                }
-            } else {
-                welcomeText.innerText = `Xush kelibsiz!`;
-            }
-        } catch (error) {
-            console.error("Foydalanuvchi ma'lumotlarini olishda xato:", error);
-            welcomeText.innerText = `Xush kelibsiz!`;
+        // Tashrifni hisoblash (Faqat bir marta dashboardga kirganda)
+        if (!sessionStorage.getItem('visited_today')) {
+            await updateDoc(doc(db, "users", user.uid), {
+                visitCount: increment(1)
+            });
+            sessionStorage.setItem('visited_today', 'true');
         }
-        
-        // Asosiy ma'lumotlarni yuklash
-        loadTests();
-        loadUserStats(user.uid); // Foydalanuvchi statistikasini yuklaymiz
 
+        loadDashboardData();
     } else {
-        // Tizimga kirmagan bo'lsa, login sahifasiga qaytarish
-        window.location.href = "index.html";
+        window.location.replace("index.html");
     }
 });
 
-// FOYDALANUVCHI STATISTIKASINI YUKLASH (YANGI QISM)
-async function loadUserStats(uid) {
+// ==========================================
+// 2. MA'LUMOTLARNI YUKLASH VA KESHDA SAQLASH
+// ==========================================
+async function loadDashboardData() {
+    const CACHE_KEY = `full_dashboard_cache_${currentUser.uid}`;
+    
+    // a) Keshdan yuklash
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) renderDashboard(JSON.parse(cached));
+
+    // b) Orqa fonda Firebase'dan yangilash
     try {
-        const q = query(collection(db, "results"), where("userId", "==", uid));
-        const querySnapshot = await getDocs(q);
-        
-        let attempts = querySnapshot.size;
-        let totalPercentage = 0;
-        
-        querySnapshot.forEach((doc) => {
-            totalPercentage += doc.data().percentage;
-        });
-        
-        let avgScore = attempts > 0 ? Math.round(totalPercentage / attempts) : 0;
-        
-        document.getElementById('attemptsStat').innerText = attempts;
-        document.getElementById('avgScoreStat').innerText = avgScore + '%';
-        
-    } catch (error) {
-        console.error("Statistikani yuklashda xato:", error);
-    }
-}
+        // 1. Foydalanuvchi profili (Stats uchun)
+        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+        const userData = userDoc.data();
 
-// TESTLARNI BAZADAN YUKLASH FUNKSIYASI
-async function loadTests() {
-    try {
-        testsContainer.innerHTML = ''; // Oldin tozalab olamiz
-        
-        const q = query(collection(db, "tests"), orderBy("createdAt", "desc"));
-        const querySnapshot = await getDocs(q);
+        // 2. Hamma ommaviy testlar
+        const testsQuery = query(collection(db, "tests"), where("visibility", "==", "public"));
+        const testsSnap = await getDocs(testsQuery);
+        const allTests = testsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Barcha testlar sonini ekranga chiqarish (YANGI QISM)
-        document.getElementById('totalTestsStat').innerText = querySnapshot.size;
+        // 3. Foydalanuvchi yechgan testlari (Shaxsiy hisob uchun)
+        const resultsQuery = query(collection(db, "results"), where("userId", "==", currentUser.uid));
+        const resultsSnap = await getDocs(resultsQuery);
+        const myResults = resultsSnap.docs.map(d => d.data());
 
-        if (querySnapshot.empty) {
-            testsContainer.innerHTML = '<p>Hozircha testlar yo\'q. Birinchi bo\'lib test yarating!</p>';
-            return;
+        // 4. Shaxsiy ulashilgan testlar (Agar foydalanuvchida sharedTests massivi bo'lsa)
+        let sharedTests = [];
+        if (userData.sharedTests && userData.sharedTests.length > 0) {
+            // Shaxsiy testlarni ID bo'yicha tortib olish
+            for (let tId of userData.sharedTests) {
+                const tDoc = await getDoc(doc(db, "tests", tId));
+                if (tDoc.exists()) sharedTests.push({ id: tDoc.id, ...tDoc.data() });
+            }
         }
 
-        querySnapshot.forEach((doc) => {
-            const test = doc.data();
-            const testId = doc.id;
-            const questionsCount = test.questions ? test.questions.length : 0;
-            
-            // Test kartochkasini yaratish
-            const testCard = document.createElement('div');
-            testCard.className = 'test-card glass-card';
-            testCard.style.padding = '25px';
-            testCard.style.margin = '0';
-            testCard.style.display = 'flex';
-            testCard.style.flexDirection = 'column';
-            testCard.style.justifyContent = 'space-between';
-            testCard.style.minHeight = '180px';
+        const dashboardData = {
+            user: userData,
+            tests: allTests,
+            myResults: myResults,
+            sharedTests: sharedTests
+        };
 
-            testCard.innerHTML = `
-                <div>
-                    <h3 style="color: var(--btn-primary); margin-bottom: 10px; font-size: 1.2rem;">${test.title}</h3>
-                    <p style="font-size: 0.9rem; text-align: left; margin-bottom: 15px; opacity: 0.8;">${test.description || "Ta'rif kiritilmagan"}</p>
-                    <div style="display: flex; gap: 15px; font-size: 0.85rem; opacity: 0.9; margin-bottom: 20px;">
-                        <span><i class="fas fa-question-circle"></i> ${questionsCount} ta savol</span>
-                        <span><i class="fas ${test.visibility === 'public' ? 'fa-globe' : 'fa-lock'}"></i> ${test.visibility}</span>
-                    </div>
-                </div>
-                <button onclick="startTest('${testId}')" class="btn btn-primary" style="margin-top: auto;">Testni ishlash</button>
-            `;
-            
-            testsContainer.appendChild(testCard);
-        });
+        // Keshni yangilash
+        localStorage.setItem(CACHE_KEY, JSON.stringify(dashboardData));
+        renderDashboard(dashboardData);
 
-    } catch (error) {
-        console.error("Testlarni yuklashda xato: ", error);
-        testsContainer.innerHTML = '<p style="color: #ff6b6b;">Xatolik yuz berdi. Internetni yoki bazani tekshiring.</p>';
-    }
+    } catch (error) { console.error("Dashboard sync error:", error); }
 }
 
-// Global scope uchun startTest funksiyasini yozamiz
-window.startTest = function(testId) {
-    window.location.href = `test.html?id=${testId}`;
+// ==========================================
+// 3. EKRANGA CHIZISH (RENDER)
+// ==========================================
+function renderDashboard(data) {
+    // A) STATISTIKA
+    const totalSolved = data.myResults.length;
+    const avgScore = totalSolved > 0 
+        ? Math.round(data.myResults.reduce((acc, curr) => acc + curr.percentage, 0) / totalSolved) 
+        : 0;
+
+    statsGrid.innerHTML = `
+        <div class="stat-card"><h3>${data.user.visitCount || 0}</h3><p>Tashriflar</p></div>
+        <div class="stat-card"><h3>${totalSolved}</h3><p>Yechilgan</p></div>
+        <div class="stat-card"><h3>${avgScore}%</h3><p>Umumiy foiz</p></div>
+    `;
+
+    // B) FANLAR BO'YICHA GURUHLASH
+    const subjectGroups = {};
+    data.tests.forEach(test => {
+        const sub = test.subject || "Boshqa fanlar";
+        if (!subjectGroups[sub]) subjectGroups[sub] = [];
+        subjectGroups[sub].push(test);
+    });
+
+    testsContainer.innerHTML = '<h2><i class="fas fa-book-open"></i> Ommaviy Testlar</h2>';
+    for (const [subject, tests] of Object.entries(subjectGroups)) {
+        const subHeader = document.createElement('div');
+        subHeader.className = 'date-header';
+        subHeader.innerHTML = `
+            <span>${subject}</span>
+            <span style="font-size:0.8rem;">${tests.length} ta test <i class="fas fa-chevron-down"></i></span>
+        `;
+        
+        const subItems = document.createElement('div');
+        subItems.className = 'date-items';
+
+        tests.forEach(test => {
+            const myCount = data.myResults.filter(r => r.testId === test.id).length;
+            const globalCount = test.solvedCount || 0;
+
+            const card = document.createElement('div');
+            card.className = 'glass-card test-item';
+            card.innerHTML = `
+                <div style="flex:1" onclick="startTest('${test.id}')">
+                    <h3 style="margin:0">${test.title}</h3>
+                    <p style="font-size:0.75rem; opacity:0.7;">Siz: ${myCount} marta | Jami: ${globalCount} marta</p>
+                </div>
+                <button onclick="showLeaderboard('${test.id}', '${test.title}')" class="btn-icon" title="Leaderboard">
+                    <i class="fas fa-trophy"></i>
+                </button>
+            `;
+            subItems.appendChild(card);
+        });
+
+        subHeader.onclick = () => subItems.classList.toggle('active');
+        testsContainer.appendChild(subHeader);
+        testsContainer.appendChild(subItems);
+    }
+
+    // V) SHAXSIY ULASHILGAN TESTLAR
+    renderSharedTests(data.sharedTests);
+}
+
+// ==========================================
+// 4. SHAXSIY TESTNI KOD/LINK ORQALI QO'SHISH
+// ==========================================
+window.addPrivateTest = async () => {
+    const code = prompt("Shaxsiy test kodini (ID) kiriting:");
+    if (!code) return;
+
+    try {
+        const testDoc = await getDoc(doc(db, "tests", code));
+        if (testDoc.exists()) {
+            await updateDoc(doc(db, "users", currentUser.uid), {
+                sharedTests: arrayUnion(code)
+            });
+            alert("Test muvaffaqiyatli qo'shildi!");
+            loadDashboardData();
+        } else {
+            alert("Bunday kodli test topilmadi!");
+        }
+    } catch (e) { alert("Xatolik!"); }
 };
 
-// Chiqish tugmasi
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    signOut(auth).then(() => {
-        window.location.href = "index.html";
-    });
-});
+// Leaderboard ko'rsatish (Sizga modal kerak bo'ladi)
+window.showLeaderboard = async (testId, title) => {
+    const resultsQuery = query(
+        collection(db, "results"), 
+        where("testId", "==", testId),
+        orderBy("percentage", "desc"),
+        limit(10)
+    );
+    // Bu yerda modal ochib natijalarni chiqarasiz
+    alert(`${title} bo'yicha Liderlar ro'yxati (Tez orada...)`);
+};
+                                           
