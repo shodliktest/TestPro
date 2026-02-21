@@ -1,0 +1,200 @@
+:root {
+    /* Ranglar va Gradientlar */
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --glass-bg: rgba(255, 255, 255, 0.15);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --text-color: #ffffff;
+    --input-bg: rgba(255, 255, 255, 0.1);
+    --btn-primary: #4facfe;
+    --btn-hover: #00f2fe;
+}
+
+/* Dark Mode (tizim sozlamasiga qarab yoki klass orqali) */
+[data-theme="dark"] {
+    --primary-gradient: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', 'Segoe UI', sans-serif;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(--primary-gradient);
+    background-attachment: fixed;
+    color: var(--text-color);
+}
+
+/* Glassmorphism Kard */
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 40px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    animation: fadeIn 0.8s ease-out;
+}
+
+h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-align: center;
+    letter-spacing: -1px;
+}
+
+p {
+    text-align: center;
+    margin-bottom: 30px;
+    opacity: 0.8;
+}
+
+/* Inputlar */
+.input-group {
+    margin-bottom: 20px;
+}
+
+input {
+    width: 100%;
+    padding: 14px 20px;
+    background: var(--input-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    color: white;
+    font-size: 1rem;
+    transition: 0.3s;
+}
+
+input::placeholder { color: rgba(255,255,255,0.6); }
+
+input:focus {
+    outline: none;
+    background: rgba(255,255,255,0.2);
+    border-color: var(--btn-primary);
+}
+
+/* Tugmalar */
+.btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+}
+
+.btn-primary {
+    background: var(--btn-primary);
+    color: white;
+    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+}
+
+.btn-primary:hover {
+    background: var(--btn-hover);
+    transform: translateY(-2px);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: white;
+}
+
+.btn-outline:hover {
+    background: var(--glass-bg);
+}
+
+/* Animatsiyalar */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .glass-card {
+        margin: 20px;
+        padding: 30px;
+    }
+}
+.dashboard-body {
+    display: flex;
+    justify-content: flex-start;
+    align-items: stretch;
+}
+
+.sidebar {
+    width: 260px;
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(20px);
+    border-right: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    padding: 30px 20px;
+}
+
+.sidebar nav {
+    margin-top: 50px;
+    flex-grow: 1;
+}
+
+.sidebar nav a {
+    display: block;
+    color: white;
+    text-decoration: none;
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    transition: 0.3s;
+}
+
+.sidebar nav a.active, .sidebar nav a:hover {
+    background: var(--glass-bg);
+}
+
+.main-content {
+    flex-grow: 1;
+    padding: 40px;
+    overflow-y: auto;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin: 30px 0;
+}
+
+.stat-card {
+    background: var(--glass-bg);
+    padding: 25px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border: 1px solid var(--glass-border);
+}
+
+.stat-card i { font-size: 2rem; color: var(--btn-primary); }
+
+.btn-icon {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    margin-right: 15px;
+}

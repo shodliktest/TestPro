@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TestPro | Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="dashboard-body">
+
+    <aside class="sidebar">
+        <div class="logo">
+            <h2>TestPro</h2>
+        </div>
+        <nav>
+            <a href="#" class="active"><i class="fas fa-home"></i> Asosiy</a>
+            <a href="create.html"><i class="fas fa-plus-circle"></i> Test Yaratish</a>
+            <a href="#"><i class="fas fa-history"></i> Natijalarim</a>
+            <a href="#" id="adminLink" style="display: none;"><i class="fas fa-user-shield"></i> Admin Panel</a>
+        </nav>
+        <div class="sidebar-footer">
+            <button id="themeToggle" class="btn-icon"><i class="fas fa-moon"></i></button>
+            <button id="logoutBtn" class="btn-icon"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header>
+            <h1 id="welcomeText">Xush kelibsiz!</h1>
+            <div class="user-profile">
+                <span id="userEmail">...</span>
+            </div>
+        </header>
+
+        <section class="stats-grid">
+            <div class="stat-card">
+                <i class="fas fa-file-alt"></i>
+                <div>
+                    <h3>0</h3>
+                    <p>Jami Testlar</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-check-double"></i>
+                <div>
+                    <h3>0%</h3>
+                    <p>O'rtacha natija</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-award"></i>
+                <div>
+                    <h3>0</h3>
+                    <p>Urinishlar</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="recent-activity glass-card">
+            <h2>Oxirgi harakatlar</h2>
+            <div id="activityList">
+                <p>Hozircha hech qanday ma'lumot yo'q.</p>
+            </div>
+        </section>
+    </main>
+
+    <script type="module" src="dashboard.js"></script>
+</body>
+</html>

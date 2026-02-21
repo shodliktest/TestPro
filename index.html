@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TestPro | Kirish</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="glass-card">
+        <h1>TestPro</h1>
+        <p>Bilimingizni sinash vaqti keldi</p>
+
+        <div class="input-group">
+            <input type="email" id="email" placeholder="Email manzilingiz">
+        </div>
+        <div class="input-group">
+            <input type="password" id="password" placeholder="Parol">
+        </div>
+
+        <button id="loginBtn" class="btn btn-primary">Kirish</button>
+        <button id="regBtn" class="btn btn-outline">Ro'yxatdan o'tish</button>
+
+        <div id="loader" style="display: none; text-align: center; margin-top: 15px;">
+            Yuklanmoqda...
+        </div>
+    </div>
+
+    <script type="module" src="auth.js"></script>
+</body>
+</html>
