@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TestPro | Test Ishlash</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body style="display: block; padding: 20px; max-width: 800px; margin: 0 auto; overflow-y: auto;">
+    
+    <div class="glass-card" style="max-width: 100%; margin-top: 20px;">
+        <button onclick="window.location.href='dashboard.html'" class="btn btn-outline" style="width: auto; margin-bottom: 20px; padding: 10px 20px;">← Ortga</button>
+
+        <h1 id="testTitle" style="text-align: left;">Yuklanmoqda...</h1>
+        <p id="testDesc" style="text-align: left; margin-bottom: 10px; color: #00f2fe;">Iltimos, kuting.</p>
+        <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.2); margin-bottom: 30px;">
+
+        <div id="questionsContainer" style="text-align: left;">
+            </div>
+
+        <button id="submitTestBtn" class="btn btn-primary" style="display: none; margin-top: 30px; font-size: 1.2rem;">Testni Yakunlash</button>
+    </div>
+
+    <div id="resultModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(10px);">
+        <div class="glass-card" style="text-align: center;">
+            <h2>Test Natijangiz</h2>
+            <h1 id="scoreDisplay" style="color: var(--btn-primary); font-size: 4rem; margin: 20px 0;">0%</h1>
+            <p id="scoreDetails" style="font-size: 1.2rem; opacity: 0.9;">0 ta to'g'ri / 0 ta savol</p>
+            <button onclick="window.location.href='dashboard.html'" class="btn btn-primary" style="margin-top: 20px;">Asosiy panelga qaytish</button>
+        </div>
+    </div>
+
+    <script type="module" src="test.js"></script>
+</body>
+</html>
