@@ -1,140 +1,157 @@
 import { auth, db } from './firebase-config.js';
-import { collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const fileInput = document.getElementById('fileInput');
 const uploadBtn = document.getElementById('uploadBtn');
 const titleInput = document.getElementById('testTitle');
-const descInput = document.getElementById('testDesc');
+const subjectSelect = document.getElementById('subjectSelect');
+const customSubjectInput = document.getElementById('customSubjectInput');
+const visibilitySelect = document.getElementById('visibilitySelect');
 const statusMsg = document.getElementById('statusMsg');
+const adminLink = document.getElementById('adminLink');
 
 let currentUser = null;
+let parsedQuestions = [];
 
-// Foydalanuvchi tizimga kirganini tekshirish
-onAuthStateChanged(auth, (user) => {
+// 1. Foydalanuvchi va Adminlikni tekshirish
+onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUser = user;
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists() && userDoc.data().role === 'admin') {
+            if (adminLink) adminLink.style.display = 'block';
+        }
     } else {
-        alert("Avval tizimga kiring!");
-        window.location.href = "index.html";
+        window.location.replace("index.html");
     }
 });
 
-uploadBtn.addEventListener('click', async () => {
-    const file = fileInput.files[0];
-    const title = titleInput.value.trim();
-    const visibility = document.querySelector('input[name="visibility"]:checked').value;
-
-    if (!title || !file) {
-        return alert("Iltimos, test nomi va TXT faylni kiriting!");
+// 2. Fan tanlash mantiqi (Boshqa tanlansa inputni ochish)
+subjectSelect.addEventListener('change', () => {
+    if (subjectSelect.value === 'other') {
+        customSubjectInput.style.display = 'block';
+        customSubjectInput.focus();
+    } else {
+        customSubjectInput.style.display = 'none';
     }
+});
 
+// 3. Faylni o'qish va tahlil qilish
+fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const ext = file.name.split('.').pop().toLowerCase();
     statusMsg.style.display = 'block';
+    statusMsg.style.color = "var(--btn-primary)";
     statusMsg.innerText = "Fayl o'qilmoqda... ⏳";
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        const text = e.target.result;
+    let rawText = "";
+
+    try {
+        if (ext === 'txt') rawText = await readTxt(file);
+        else if (ext === 'pdf') rawText = await readPdf(file);
+        else if (ext === 'docx') rawText = await readDocx(file);
         
-        // 1. Matnni Parsing qilish (JSON formatga o'tkazish)
-        const questions = parseTXT(text);
-
-        if (questions.length === 0) {
-            statusMsg.innerText = "Fayldan savollar topilmadi. Formatni tekshiring!";
-            statusMsg.style.color = "red";
-            return;
+        parsedQuestions = parseContent(rawText);
+        
+        if (parsedQuestions.length > 0) {
+            statusMsg.innerText = `${parsedQuestions.length} ta savol tayyor! ✅`;
+            statusMsg.style.color = "#2ecc71";
+        } else {
+            statusMsg.innerText = "Savollar topilmadi! Formatni tekshiring. ❌";
+            statusMsg.style.color = "#e74c3c";
         }
-
-        // 2. Firebase-ga yuborish
-        try {
-            statusMsg.innerText = "Bazaga yuklanmoqda... 🚀";
-            await addDoc(collection(db, "tests"), {
-                authorId: currentUser.uid,
-                title: title,
-                description: descInput.value,
-                visibility: visibility,
-                questions: questions,
-                createdAt: new Date()
-            });
-
-            statusMsg.innerText = `Muvaffaqiyatli! ${questions.length} ta savol yuklandi ✅`;
-            statusMsg.style.color = "#00f2fe";
-            
-            // Maydonlarni tozalash
-            titleInput.value = '';
-            descInput.value = '';
-            fileInput.value = '';
-            
-            setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
-        } catch (error) {
-            console.error(error);
-            statusMsg.innerText = "Xatolik yuz berdi!";
-            statusMsg.style.color = "red";
-        }
-    };
-    reader.readAsText(file);
+    } catch (err) {
+        statusMsg.innerText = "Faylni o'qishda xatolik!";
+    }
 });
 
-// 🧠 Asosiy Parsing Logikasi
-function parseTXT(data) {
+// --- O'qish yordamchilari ---
+function readTxt(file) {
+    return new Promise(res => {
+        const reader = new FileReader();
+        reader.onload = e => res(e.target.result);
+        reader.readAsText(file);
+    });
+}
+
+async function readPdf(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let text = "";
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(s => s.str).join(" ") + "\n";
+    }
+    return text;
+}
+
+async function readDocx(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const res = await mammoth.extractRawText({ arrayBuffer });
+    return res.value;
+}
+
+// 4. Sening Parsing Logikang (A, B, C variantlar uchun)
+function parseContent(data) {
     const lines = data.split('\n').map(l => l.trim()).filter(l => l !== "");
     let questionsArray = [];
     let currentQ = null;
 
     for (let line of lines) {
-        // Savolni aniqlash (Masalan: "1. " yoki "1) " bilan boshlansa)
         if (/^\d+[\.\)]/.test(line)) {
             if (currentQ) questionsArray.push(currentQ);
-            
-            currentQ = {
-                question: line.replace(/^\d+[\.\)]\s*/, ''), // Raqamni olib tashlab, savolning o'zini qoldiradi
-                options: [],
-                correctIndex: 0 // Dastlabki holatda 0, pastda o'zgaradi agar * topsa
-            };
-        } 
-        // Variantlarni aniqlash (Masalan: "A) ", "B. ")
-        else if (/^[a-zA-Z][\.\)]/.test(line) && currentQ) {
-            let isCorrect = line.includes('*');
-            let optionText = line.replace(/^[a-zA-Z][\.\)]\s*/, '').replace('*', '').trim();
-            
-            if (isCorrect) {
-                currentQ.correctIndex = currentQ.options.length; // Arraydagi joriy indeksni to'g'ri deb belgilaydi
-            }
-            currentQ.options.push(optionText);
+            currentQ = { question: line.replace(/^\d+[\.\)]\s*/, ''), options: [] };
+        } else if (/^[a-zA-Z][\.\)]/.test(line) && currentQ) {
+            let isCorrect = line.includes('*') || line.includes('+');
+            let text = line.replace(/^[a-zA-Z][\.\)]\s*/, '').replace(/[\*\+]/, '').trim();
+            currentQ.options.push({ text: text, isCorrect: isCorrect });
         }
     }
-    // Oxirgi savolni arrayga qo'shib qo'yish
     if (currentQ) questionsArray.push(currentQ);
-    
     return questionsArray;
 }
 
-// ==========================================
-// TUN REJIMI (DARK MODE) SAQLASH VA ISHLATISH
-// ==========================================
-const themeToggle = document.getElementById('themeToggle');
+// 5. Bazaga yuklash
+uploadBtn.addEventListener('click', async () => {
+    const title = titleInput.value.trim();
+    const visibility = visibilitySelect.value;
+    let subject = (subjectSelect.value === 'other') ? customSubjectInput.value.trim() : subjectSelect.value;
 
-// 1. Sahifa yuklanishi bilan LocalStorage'ni tekshirish
-if (localStorage.getItem('theme') === 'dark') {
-    document.body.setAttribute('data-theme', 'dark');
-    if (themeToggle) themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
-} else {
-    if (themeToggle) themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
-}
+    if (!title || !subject || parsedQuestions.length === 0) return alert("Barcha maydonlarni to'ldiring!");
 
-// 2. Tugma bosilganda rejimi o'zgartirish va xotiraga yozish
-if (themeToggle) {
-    themeToggle.addEventListener('click', () => {
-        const isDark = document.body.getAttribute('data-theme') === 'dark';
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yuklanmoqda...';
+
+    try {
+        const testId = "test_" + Date.now();
+        await setDoc(doc(db, "tests", testId), {
+            id: testId,
+            authorId: currentUser.uid,
+            title: title,
+            subject: subject,
+            visibility: visibility,
+            questions: parsedQuestions,
+            solvedCount: 0,
+            createdAt: new Date()
+        });
+
+        // Dashboard keshini tozalash
+        localStorage.removeItem('public_tests_cache');
+
+        if (visibility === 'private') alert(`Shaxsiy test kodi: ${testId}`);
+        else alert("Test ommaviy qilindi!");
+
+        window.location.replace("dashboard.html");
+    } catch (err) {
+        alert("Xatolik: " + err.message);
+        uploadBtn.disabled = false;
+        uploadBtn.innerText = "Testni Bazaga Saqlash";
+    }
+});
         
-        if (isDark) {
-            document.body.removeAttribute('data-theme');
-            localStorage.setItem('theme', 'light'); // Yorug' rejimni eslab qolish
-            themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
-        } else {
-            document.body.setAttribute('data-theme', 'dark');
-            localStorage.setItem('theme', 'dark'); // Tun rejimini eslab qolish
-            themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
-        }
-    });
-}
