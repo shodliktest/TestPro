@@ -198,3 +198,59 @@ input:focus {
     cursor: pointer;
     margin-right: 15px;
 }
+/* =========================================
+   TELEFONLAR UCHUN MOSLASHUVCHAN DIZAYN (MOBILE RESPONSIVE)
+========================================= */
+@media (max-width: 768px) {
+    .dashboard-body {
+        flex-direction: column; /* Yon menyuni tepaga o'tkazadi */
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 20px;
+        border-right: none;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .sidebar .logo h2 {
+        font-size: 1.2rem;
+        margin: 0;
+    }
+
+    .sidebar nav {
+        display: flex;
+        margin-top: 0;
+        gap: 10px;
+    }
+
+    .sidebar nav a {
+        padding: 10px;
+        margin-bottom: 0;
+        font-size: 0; /* Telefonda menyu matnini yashiramiz */
+    }
+
+    .sidebar nav a i {
+        font-size: 1.2rem; /* Faqat ikonkalarni qoldiramiz */
+    }
+
+    .main-content {
+        padding: 20px 15px;
+    }
+
+    /* Katta yozuvlarni telefonga moslash */
+    header h1 {
+        font-size: 1.5rem;
+        word-wrap: break-word; /* Ekrandan chiqib ketmasligi uchun */
+    }
+
+    .user-profile span {
+        font-size: 0.8rem;
+        word-wrap: break-word;
+    }
+}
+
