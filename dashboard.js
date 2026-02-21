@@ -125,12 +125,3 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
         window.location.href = "index.html";
     });
 });
-
-// Dark/Light Mode
-const themeToggle = document.getElementById('themeToggle');
-themeToggle.addEventListener('click', () => {
-    const body = document.body;
-    const isDark = body.getAttribute('data-theme') === 'dark';
-    body.setAttribute('data-theme', isDark ? 'light' : 'dark');
-    themeToggle.innerHTML = isDark ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
-});
